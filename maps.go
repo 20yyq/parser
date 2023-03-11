@@ -1,7 +1,7 @@
 // @@
 // @ Author       : Eacher
 // @ Date         : 2023-03-07 09:53:53
-// @ LastEditTime : 2023-03-07 14:58:20
+// @ LastEditTime : 2023-03-11 15:10:35
 // @ LastEditors  : Eacher
 // @ --------------------------------------------------------------------------------<
 // @ Description  : 
@@ -19,7 +19,7 @@ import (
 	"context"
 )
 
-type VALUE interface { string|bool|int64|uint64|float64|*Node }
+type VALUE interface { string|bool|int64|uint64|float64|*Node|[]*Item }
 
 type ContentType string
 
@@ -69,7 +69,6 @@ type original struct {
 	buf 	[]byte
 	index 	int
 	tail 	int
-	Err 	error
 }
 
 // 读取JSON对象体
@@ -268,7 +267,16 @@ func NewMaps(b []byte, c Config) *Maps {
 	m, o := &Maps{start: &Node{}, c: &c}, &original{buf: b, tail: len(b), index: 0}
 	var cause context.CancelCauseFunc
 	m.ctx, cause = context.WithCancelCause(context.Background())
-	go func() { cause(o.loadJson(m.start)) }()
+	go func(o *original) {
+		err := o.loadJson(m.start)
+		if err == nil {
+			o.index++
+			if o.skipByte(spaces); o.index < o.tail && -1 == bytes.IndexByte(spaces, o.buf[o.index]) {
+				err = fmt.Errorf("eof %s \n", o.buf[o.index:])
+			}
+		}
+		cause(err)
+	}(o)
 	if c.Sync { m.Load() }
 	if m.c.SplitChar == 0 {
 		m.c.SplitChar = byte(splitChar)
@@ -288,23 +296,19 @@ func (m *Maps) Load() (err error) {
 	return err
 }
 
-func findItem(n *Node, key string) *Item {
-	num, err := strconv.ParseInt(key, 10, 8)
+func FindItem(n *Node, key string) *Item {
 	for n != nil {
 		if n.key == key {
 			return n.value
 		}
-		if n.value != nil && err == nil && reflect.Slice == n.value.value.Kind() {
-			if n.value.value.Len() > int(num) {
-				if v := n.value.value.Index(int(num)); v.Kind() == reflect.Pointer {
-					i, _ := v.Interface().(*Item)
-					return i
-				}
-			}
-		}
 		n = n.next
 	}
 	return nil
+}
+
+func ItemValue[V VALUE](item *Item) (v V, ok bool) {
+	v, ok = item.value.Interface().(V)
+	return 
 }
 
 // Get
@@ -312,47 +316,34 @@ func Get[V VALUE](m *Maps, keys string) (v V, ok bool) {
 	var item *Item
 	node, list, index := m.start, bytes.Split([]byte(keys), []byte{m.c.SplitChar}), 0
 	for node != nil {
-		item = findItem(node, string(list[index]))
-		if node = nil; item != nil && item.value.Kind() == reflect.Pointer {
-			if n, o := item.value.Interface().(*Node); o {
+		if item, node = FindItem(node, string(list[index])), nil; item != nil {
+			if index++; index == len(list) {
+				v, ok = item.value.Interface().(V)
+				break
+			}
+			if reflect.Slice == item.value.Kind() {
+				num, err := strconv.ParseInt(string(list[index]), 10, 8)
+				if err != nil || item.value.Len() <= int(num) {
+					item = nil
+					continue
+				}
+				if item, _ = item.value.Index(int(num)).Interface().(*Item); item == nil {
+					continue
+				}
+				if index++; index == len(list) {
+					v, ok = item.value.Interface().(V)
+					break
+				}
+			}
+			if n, ok := item.value.Interface().(*Node); ok {
 				node = n
 			}
-		}
-		if index++; index == len(list) {
-			if item != nil && reflect.TypeOf(v).Kind() == item.value.Kind() {
-				v, ok = itemValue[V](item), true
-			}
-			break
 		}
 	}
 	return
 }
 
-// 
-func itemValue[V VALUE](item *Item) (v V) {
-	var a any
-	switch reflect.TypeOf(v).Kind() {
-	case reflect.Pointer:
-		if n, o := item.value.Interface().(*Node); o {
-			a = n
-		}
-	case reflect.String:
-		a = item.value.String()
-	case reflect.Int64:
-		a = item.value.Int()
-	case reflect.Uint64:
-		a = item.value.Uint()
-	case reflect.Float64:
-		a = item.value.Float()
-	case reflect.Bool:
-		a = item.value.Bool()
-	}
-	v1, ok := a.(V)
-	if ok { v = v1 }
-	return 
-}
-
 // Set
-func Set[V VALUE](m *Maps, key string, v V) bool {
+func Set[V VALUE](m *Maps, keys string, v V) bool {
 	return false
 }

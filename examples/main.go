@@ -1,7 +1,7 @@
 // @@
 // @ Author       : Eacher
 // @ Date         : 2023-03-02 15:31:08
-// @ LastEditTime : 2023-03-07 14:55:36
+// @ LastEditTime : 2023-03-11 15:13:26
 // @ LastEditors  : Eacher
 // @ --------------------------------------------------------------------------------<
 // @ Description  : 
@@ -26,7 +26,7 @@ func main() {
 		"givenName": "Leonid",
 		"familyName": "Bugaev"
 	},
-	"email": "leonsbo\"x@gmail.com",
+	"email": "leonsbo\\"x@gmail.com",
 	"gender": "male",
 	"location": "Saint Petersburg, Saint Petersburg, RU",
 	"geo": {
@@ -112,7 +112,12 @@ func main() {
 	"favorites": 0
 }`), parser.Config{})
 	p.Load()
-	v, ok := parser.Get[*parser.Node](p, "gravatar.avatars.0")
-	fmt.Println("1451351", p, p.Load(), v, ok)
+	v, ok := parser.Get[[]*parser.Item](p, "gravatar.avatars")
+	v1, ok1 := parser.ItemValue[*parser.Node](v[0])
+	v2, ok2 := parser.ItemValue[string](parser.FindItem(v1, "type"))
+	fmt.Println("1451351", p, p.Load(), v, ok, v1, ok1, v2, ok2)
+	v3, ok3 := parser.Get[uint64](p, "angellist.followers")
+	fmt.Println("1451351", p, p.Load(), v3, ok3)
 	time.Sleep(time.Second*1)
+	parser.Set[string](p, "", "gravatar.avatars")
 }
