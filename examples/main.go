@@ -100,7 +100,10 @@ func main() {
 	"statuses": 5,
 	"gravatar": {
 		"handle": "buger",
-		"urls": [],
+		"urls": [[[{
+			"url": "http://1.gravatar.com/avatar/f7c8edd577d13b8930d5522f28123510",
+			"type": "thumbnail"
+		}]]],
 		"avatar": "http://1.gravatar.com/avatar/f7c8edd577d13b8930d5522f28123510",
 		"avatars": [{
 			"url": "http://1.gravatar.com/avatar/f7c8edd577d13b8930d5522f28123510",
@@ -112,12 +115,19 @@ func main() {
 	"favorites": 0
 }`), parser.Config{})
 	p.Load()
-	v, ok := parser.Get[[]*parser.Item](p, "gravatar.avatars")
-	v1, ok1 := parser.ItemValue[*parser.Node](v[0])
-	v2, ok2 := parser.ItemValue[string](parser.FindItem(v1, "type"))
-	fmt.Println("1451351", p, p.Load(), v, ok, v1, ok1, v2, ok2)
-	v3, ok3 := parser.Get[uint64](p, "angellist.followers")
-	fmt.Println("1451351", p, p.Load(), v3, ok3)
+	// v, ok := parser.Get[[]any](p, "gravatar.urls.0")
+	// v[0] = "11111"
+	v, ok := parser.Get[parser.Node](p, "gravatar.urls.0.0.0")
+	// v11 := parser.FindItem(v, "type")
+	// v2, ok2 := parser.ItemValue[string](v11.(parser.Item))
+	// v, ok = parser.Get[[]any](p, "gravatar.urls.0")
+	fmt.Println("1451351", p, p.Load(), v, ok)
+	// v11 := parser.FindItem(v[0].(*parser.Node), "type")
+	// v1, ok1 := parser.ItemValue[*parser.Node](v11)
+	// v2, ok2 := parser.ItemValue[string](v11.(parser.Item))
+	// fmt.Println("1451351", p, p.Load(), v, ok, v1, ok1, v2, ok2)
+	// v3, ok3 := parser.Get[uint64](p, "angellist.followers")
+	// fmt.Println("1451351", p, p.Load(), v3, ok3)
 	time.Sleep(time.Second*1)
 	parser.Set[string](p, "", "gravatar.avatars")
 }
